@@ -462,14 +462,24 @@
       display: flex; align-items: center; justify-content: center; transition: var(--t);
     }
     .pb-zbtn:hover { border-color: var(--teal-cta); color: var(--teal-cta); }
+    /* Hide browser default number spinners (arrows) */
+    input[type=number]::-webkit-inner-spin-button,
+    input[type=number]::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    input[type=number] {
+      -moz-appearance: textfield;
+    }
+
     .pb-zoom-wrap {
       display: inline-flex;
       align-items: center;
       position: relative;
     }
     .pb-zoom-input {
-      width: 48px;
-      padding: 5px 14px 5px 4px;
+      width: 52px;
+      padding: 5px 16px 5px 6px;
       border: 1px solid #c9dceb;
       border-radius: 6px;
       text-align: center;

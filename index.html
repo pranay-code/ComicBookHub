@@ -8,7 +8,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link href="https://fonts.googleapis.com/css2?family=Bangers&family=DM+Serif+Display:ital@0;1&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <link rel="preload" as="image" href="assets/user-home-theme.webp"/>
+  <link rel="preload" as="image" href="assets/covers/title_page.webp"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" defer></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -103,7 +105,7 @@
     .hero-bg {
       position: absolute;
       inset: 0;
-      background-image: url('assets/user-home-theme.png');
+      background-image: url('assets/user-home-theme.webp');
       background-size: contain;
       background-position: center center;
       background-repeat: no-repeat;
@@ -558,8 +560,7 @@
       <div class="modal-header">
         <span class="modal-title" id="modal-title">—</span>
         <div class="modal-btns">
-          <button class="mbtn" onclick="downloadComic()" title="Download">&#8595;</button>
-          <button class="mbtn" onclick="toggleFullscreen()" title="Fullscreen">&#x26F6;</button>
+          <button class="mbtn" onclick="downloadComic()" title="Download PDF">&#8595;</button>
           <button class="mbtn x" onclick="closeModal()" title="Close">&#x2715;</button>
         </div>
       </div>
@@ -605,7 +606,7 @@
         title: "Doraemon & The Genius AI-Box",
         tag: "AI Literacy",
         desc: "Mastering the 4Ds of AI Literacy: Delegation, Description, Discernment, and Diligence.",
-        thumbnail: "assets/covers/title_page.png",
+        thumbnail: "assets/covers/title_page.webp",
         pdf: "assets/covers/Doremon%26GeniusAIBox_AILiteracy_ComicBook.pdf",
       }
     ];

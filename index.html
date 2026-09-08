@@ -155,6 +155,16 @@
       font-weight: 400;
     }
 
+    .hero-themes {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--teal-cta);
+      letter-spacing: 0.02em;
+      margin: 0 auto 32px;
+      max-width: 600px;
+      line-height: 1.5;
+    }
+
     .hero-cta-btn {
       display: inline-block;
       font-size: 0.92rem;
@@ -479,6 +489,7 @@
       <p class="hero-body">
         Educational comics capturing the magic of classic cartoons. Discover fascinating everyday concepts explained through the familiar, fun style of classic childhood cartoons.
       </p>
+      <div class="hero-themes">Themes: AI, Climate Change, Energy Transition, Science & Human Behaviour</div>
       <a href="#library" class="hero-cta-btn" id="hero-lib">Browse the Library</a>
     </div>
   </section>
@@ -585,6 +596,7 @@
     let zoom      = 1.0;
     let openId    = null;
     let rendering = false;
+    let currentTask = null;
 
     function openComic(id) {
       const c = COMICS.find(x => x.id === id);
@@ -611,6 +623,11 @@
     }
 
     async function loadPDF(path) {
+      if (currentTask) {
+        try { currentTask.destroy(); } catch(e) {}
+        currentTask = null;
+      }
+
       const url = decodeURIComponent(path);
 
       const task = pdfjsLib.getDocument({
@@ -621,6 +638,7 @@
         disableAutoFetch: false,
         cMapPacked: true,
       });
+      currentTask = task;
 
       task.onProgress = ({ loaded, total }) => {
         if (total > 0) {
@@ -633,7 +651,13 @@
       };
 
       try {
-        pdfDoc = await task.promise;
+        const loadedDoc = await task.promise;
+        // If modal was closed while loading, discard
+        if (!document.getElementById('modal-backdrop').classList.contains('open')) {
+          try { loadedDoc.destroy(); } catch(e) {}
+          return;
+        }
+        pdfDoc = loadedDoc;
         const n = pdfDoc.numPages;
         document.getElementById('total-pages').textContent = n;
         document.getElementById('page-input').max = n;
@@ -775,10 +799,24 @@
     }
 
     function closeModal() {
+      if (document.fullscreenElement) {
+        document.exitFullscreen?.().catch(() => {});
+      }
       document.getElementById('modal-backdrop').classList.remove('open');
       document.body.style.overflow = '';
-      pdfDoc = null; curPage = 1; rendering = false;
-      resetViewer();
+      if (currentTask) {
+        try { currentTask.destroy(); } catch(e) {}
+        currentTask = null;
+      }
+      if (pdfDoc) {
+        try { pdfDoc.destroy(); } catch(e) {}
+        pdfDoc = null;
+      }
+      curPage = 1;
+      rendering = false;
+      // Empty viewer so no loading spinner stays behind
+      document.getElementById('viewer').innerHTML = '';
+      document.getElementById('thumb-sidebar').innerHTML = '<div class="thumb-lbl">Pages</div>';
     }
 
     function closeOnBackdrop(e) {
@@ -796,8 +834,30 @@
 
     function toggleFullscreen() {
       const m = document.querySelector('.modal');
-      if (!document.fullscreenElement) m.requestFullscreen?.();
-      else document.exitFullscreen?.();
+      if (!document.fullscreenElement) {
+        if (m.requestFullscreen) m.requestFullscreen();
+        else if (m.webkitRequestFullscreen) m.webkitRequestFullscreen();
+        else if (m.msRequestFullscreen) m.msRequestFullscreen();
+      } else {
+        if (document.exitFullscreen) document.exitFullscreen();
+        else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+        else if (document.msExitFullscreen) document.msExitFullscreen();
+      }
+    }
+
+    // Auto-fit screen when entering or exiting fullscreen / resizing
+    document.addEventListener('fullscreenchange', onResizeOrFullscreen);
+    document.addEventListener('webkitfullscreenchange', onResizeOrFullscreen);
+    window.addEventListener('resize', onResizeOrFullscreen);
+
+    let resizeTimer = null;
+    function onResizeOrFullscreen() {
+      if (!document.getElementById('modal-backdrop').classList.contains('open') || !pdfDoc) return;
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(async () => {
+        await autoFitZoom();
+        await renderCurrentPage();
+      }, 150);
     }
 
     document.addEventListener('keydown', e => {

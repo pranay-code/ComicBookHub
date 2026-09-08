@@ -91,37 +91,38 @@
     /* ─── HERO SECTION ─── */
     .hero {
       position: relative;
-      min-height: 100vh;
       display: flex;
       align-items: center;
       justify-content: center;
       text-align: center;
       overflow: hidden;
-      padding: 110px 24px 70px;
+      padding: 100px 24px 60px;
       background-color: #ebf5fd;
     }
 
-    /* Full background illustration visible across all device screen sizes */
+    /* Full background illustration - covers area beautifully without excessive empty top/bottom space */
     .hero-bg {
       position: absolute;
       inset: 0;
       background-image: url('assets/user-home-theme.webp');
-      background-size: contain;
+      background-size: cover;
       background-position: center center;
       background-repeat: no-repeat;
       z-index: 1;
+      opacity: 0.92;
     }
 
-    /* Center text card container: guaranteed legible, pristine contrast */
+    /* Center text card container */
     .hero-inner {
       position: relative;
       z-index: 3;
       max-width: 680px;
       width: 100%;
-      padding: 42px 34px;
+      margin: 20px auto;
+      padding: 44px 34px;
       background: rgba(235, 245, 253, 0.88);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
       border-radius: 20px;
       border: 1px solid rgba(255, 255, 255, 0.85);
       box-shadow: 0 10px 40px rgba(25, 65, 105, 0.08);
@@ -501,16 +502,26 @@
 
     @keyframes spin { to { transform: rotate(360deg); } }
 
+    /* Tablet devices (iPad, Surface Pro, tablets) */
+    @media (max-width: 1024px) {
+      .hero {
+        padding: 90px 20px 50px;
+      }
+      .hero-inner {
+        max-width: 620px;
+        padding: 38px 28px;
+      }
+    }
+
+    /* Mobile screens */
     @media (max-width: 768px) {
       nav { padding: 0 20px; }
       .hero {
-        padding: 90px 16px 50px;
-        min-height: 90vh;
+        padding: 85px 16px 45px;
       }
       .hero-bg {
         background-size: cover;
-        background-position: center;
-        opacity: 0.35; /* On small mobile screens, keep background subtle so text is completely readable */
+        opacity: 0.45;
       }
       .hero-inner {
         padding: 28px 18px;

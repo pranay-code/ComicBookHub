@@ -460,7 +460,32 @@
       display: flex; align-items: center; justify-content: center; transition: var(--t);
     }
     .pb-zbtn:hover { border-color: var(--teal-cta); color: var(--teal-cta); }
-    .pb-zval { font-size: 0.8rem; color: var(--ink-muted); min-width: 42px; text-align: center; }
+    .pb-zoom-wrap {
+      display: inline-flex;
+      align-items: center;
+      position: relative;
+    }
+    .pb-zoom-input {
+      width: 48px;
+      padding: 5px 14px 5px 4px;
+      border: 1px solid #c9dceb;
+      border-radius: 6px;
+      text-align: center;
+      font-size: 0.82rem;
+      font-family: inherit;
+      color: var(--ink-dark);
+      background: #ffffff;
+      outline: none;
+      transition: var(--t);
+    }
+    .pb-zoom-input:focus { border-color: var(--teal-cta); }
+    .pb-zoom-pct {
+      position: absolute;
+      right: 6px;
+      font-size: 0.75rem;
+      color: var(--ink-muted);
+      pointer-events: none;
+    }
 
     @keyframes spin { to { transform: rotate(360deg); } }
 
@@ -558,10 +583,12 @@
         </div>
         <button class="pb-arrow" id="btn-next" onclick="changePage(1)">&#8250;</button>
         <div class="pb-sep"></div>
-        <button class="pb-zbtn" onclick="changeZoom(-0.25)">&#x2212;</button>
-        <span class="pb-zval" id="zoom-val">—</span>
-        <button class="pb-zbtn" onclick="changeZoom(0.25)">&#x2B;</button>
-        <button class="pb-zbtn" onclick="fitPage()" title="Fit page">&#x2194;</button>
+        <button class="pb-zbtn" onclick="changeZoom(-0.05)" title="Zoom out 5%">&#x2212;</button>
+        <div class="pb-zoom-wrap">
+          <input class="pb-zoom-input" type="number" id="zoom-input" min="20" max="400" step="5" onchange="setCustomZoom(this.value)" onkeydown="if(event.key==='Enter')this.blur()" title="Type custom percentage"/>
+          <span class="pb-zoom-pct">%</span>
+        </div>
+        <button class="pb-zbtn" onclick="changeZoom(0.05)" title="Zoom in 5%">&#x2B;</button>
       </div>
     </div>
   </div>
@@ -639,7 +666,7 @@
       document.getElementById('thumb-sidebar').innerHTML = '<div class="thumb-lbl">Pages</div>';
       document.getElementById('total-pages').textContent = '—';
       document.getElementById('page-input').value = 1;
-      document.getElementById('zoom-val').textContent = '—';
+      document.getElementById('zoom-input').value = '100';
     }
 
     async function loadPDF(path) {
@@ -714,7 +741,7 @@
       const availW = viewer.clientWidth  - 48;
       const availH = viewer.clientHeight - 48;
       zoom = Math.min(availW / vp1.width, availH / vp1.height, 2.0);
-      document.getElementById('zoom-val').textContent = Math.round(zoom * 100) + '%';
+      updateZoomDisplay();
     }
 
     async function renderCurrentPage() {
@@ -806,15 +833,33 @@
       document.getElementById('btn-next').disabled = curPage >= pdfDoc.numPages;
     }
 
+    function updateZoomDisplay() {
+      const input = document.getElementById('zoom-input');
+      if (input) input.value = Math.round(zoom * 100);
+    }
+
     async function changeZoom(d) {
       if (!pdfDoc) return;
-      zoom = Math.min(Math.max(zoom + d, 0.4), 4.0);
-      document.getElementById('zoom-val').textContent = Math.round(zoom * 100) + '%';
+      // Round to nearest multiple of 5%
+      let currentPct = Math.round(zoom * 100);
+      let deltaPct = Math.round(d * 100);
+      let targetPct = Math.round((currentPct + deltaPct) / 5) * 5;
+      targetPct = Math.min(Math.max(targetPct, 20), 400);
+      zoom = targetPct / 100;
+      updateZoomDisplay();
       await renderCurrentPage();
     }
 
-    async function fitPage() {
-      await autoFitZoom();
+    async function setCustomZoom(val) {
+      if (!pdfDoc) return;
+      let pct = parseInt(val, 10);
+      if (isNaN(pct)) {
+        updateZoomDisplay();
+        return;
+      }
+      pct = Math.min(Math.max(pct, 20), 400);
+      zoom = pct / 100;
+      updateZoomDisplay();
       await renderCurrentPage();
     }
 
@@ -885,8 +930,8 @@
       if (e.key === 'Escape')                                closeModal();
       if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); changePage(1); }
       if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')   { e.preventDefault(); changePage(-1); }
-      if (e.key === '+' || e.key === '=')                   changeZoom(0.25);
-      if (e.key === '-')                                    changeZoom(-0.25);
+      if (e.key === '+' || e.key === '=')                   changeZoom(0.05);
+      if (e.key === '-')                                    changeZoom(-0.05);
     });
   </script>
 </body>

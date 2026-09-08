@@ -95,16 +95,17 @@
       justify-content: center;
       text-align: center;
       overflow: hidden;
-      padding: 100px 24px 60px;
+      padding: 110px 24px 70px;
+      background-color: #ebf5fd;
     }
 
-    /* Colorful cartoon sketch border background with wide open center */
+    /* Full background illustration visible across all device screen sizes */
     .hero-bg {
       position: absolute;
       inset: 0;
       background-image: url('assets/user-home-theme.png');
-      background-size: cover;
-      background-position: center;
+      background-size: contain;
+      background-position: center center;
       background-repeat: no-repeat;
       z-index: 1;
     }
@@ -113,13 +114,15 @@
     .hero-inner {
       position: relative;
       z-index: 3;
-      max-width: 720px;
-      padding: 44px 36px;
-      background: rgba(234, 244, 252, 0.82);
-      backdrop-filter: blur(10px);
+      max-width: 680px;
+      width: 100%;
+      padding: 42px 34px;
+      background: rgba(235, 245, 253, 0.88);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
       border-radius: 20px;
-      border: 1px solid rgba(255, 255, 255, 0.7);
-      box-shadow: 0 10px 40px rgba(35, 80, 120, 0.07);
+      border: 1px solid rgba(255, 255, 255, 0.85);
+      box-shadow: 0 10px 40px rgba(25, 65, 105, 0.08);
     }
 
     .hero-eyebrow {
@@ -463,7 +466,24 @@
 
     @media (max-width: 768px) {
       nav { padding: 0 20px; }
-      .hero-inner { padding: 32px 20px; margin: 0 12px; }
+      .hero {
+        padding: 90px 16px 50px;
+        min-height: 90vh;
+      }
+      .hero-bg {
+        background-size: cover;
+        background-position: center;
+        opacity: 0.35; /* On small mobile screens, keep background subtle so text is completely readable */
+      }
+      .hero-inner {
+        padding: 28px 18px;
+        margin: 0 auto;
+        background: rgba(235, 245, 253, 0.94);
+      }
+      .hero-eyebrow { font-size: 1.25rem; margin-bottom: 12px; }
+      .hero-title { font-size: 2.1rem; margin-bottom: 16px; }
+      .hero-body { font-size: 0.95rem; margin-bottom: 22px; }
+      .hero-themes { font-size: 0.88rem; margin-bottom: 24px; }
       .thumb-sidebar { display: none; }
     }
   </style>

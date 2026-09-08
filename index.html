@@ -10,7 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Bangers&family=DM+Serif+Display:ital@0;1&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
   <link rel="preload" as="image" href="assets/user-home-theme.webp"/>
   <link rel="preload" as="image" href="assets/covers/title_page.webp"/>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -215,7 +215,7 @@
     /* ─── COMIC GRID & CARDS ─── */
     .comics-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(240px, 300px));
+      grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 300px));
       gap: 28px;
     }
 
@@ -595,11 +595,16 @@
   </div>
 
   <script>
-    // PDF.js worker
-    pdfjsLib.GlobalWorkerOptions.workerSrc =
-      'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    // Safe initialization of PDF.js worker
+    function initPdfWorker() {
+      if (window.pdfjsLib) {
+        pdfjsLib.GlobalWorkerOptions.workerSrc =
+          'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      }
+    }
+    initPdfWorker();
 
-    // Comics catalog: title_page.png is the exact first page extracted from your PDF!
+    // Comics catalog
     const COMICS = [
       {
         id: 1,
@@ -613,6 +618,7 @@
 
     function renderComics() {
       const grid = document.getElementById('comics-grid');
+      if (!grid) return;
       grid.innerHTML = COMICS.map(c => `
         <div class="comic-card" onclick="openComic(${c.id})">
           <div class="comic-cover">
@@ -628,7 +634,12 @@
       `).join('');
     }
 
+    // Render immediately and on DOMContentLoaded
     renderComics();
+    document.addEventListener('DOMContentLoaded', () => {
+      initPdfWorker();
+      renderComics();
+    });
 
     // Smooth scroll for nav and hero buttons
     ['hero-lib'].forEach(id => {

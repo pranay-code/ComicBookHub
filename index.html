@@ -152,6 +152,15 @@
       color: var(--teal-cta);
     }
 
+    .hero-body {
+      font-size: 1.05rem;
+      line-height: 1.75;
+      color: var(--ink-body);
+      max-width: 580px;
+      margin: 0 auto 36px;
+      font-weight: 400;
+    }
+
     .hero-themes {
       font-size: 0.95rem;
       font-weight: 600;
@@ -521,6 +530,7 @@
       }
       .hero-eyebrow { font-size: 1.25rem; margin-bottom: 12px; }
       .hero-title { font-size: 2.1rem; margin-bottom: 16px; }
+      .hero-body { font-size: 0.95rem; margin-bottom: 22px; }
       .hero-themes { font-size: 0.88rem; margin-bottom: 24px; }
       .thumb-sidebar { display: none; }
     }
@@ -586,3 +596,373 @@
       </div>
       <div class="pdf-bar">
         <button class="pb-arrow" id="btn-prev" onclick="changePage(-1)">&#8249;</button>
+        <div class="pb-info">
+          <input class="pb-input" type="number" id="page-input" min="1" onchange="goToPage(this.value)"/>
+          <span>/ <span id="total-pages">—</span></span>
+        </div>
+        <button class="pb-arrow" id="btn-next" onclick="changePage(1)">&#8250;</button>
+        <div class="pb-sep"></div>
+        <button class="pb-zbtn" onclick="changeZoom(-0.05)" title="Zoom out 5%">&#x2212;</button>
+        <div class="pb-zoom-wrap">
+          <input class="pb-zoom-input" type="number" id="zoom-input" min="20" max="400" step="5" onchange="setCustomZoom(this.value)" onkeydown="if(event.key==='Enter')this.blur()" title="Type custom percentage"/>
+          <span class="pb-zoom-pct">%</span>
+        </div>
+        <button class="pb-zbtn" onclick="changeZoom(0.05)" title="Zoom in 5%">&#x2B;</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Safe initialization of PDF.js worker
+    function initPdfWorker() {
+      if (window.pdfjsLib) {
+        pdfjsLib.GlobalWorkerOptions.workerSrc =
+          'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      }
+    }
+    initPdfWorker();
+
+    // Comics catalog
+    const COMICS = [
+      {
+        id: 1,
+        title: "Doraemon & The Genius AI-Box",
+        tag: "AI Literacy",
+        desc: "Mastering the 4Ds of AI Literacy: Delegation, Description, Discernment, and Diligence.",
+        thumbnail: "assets/covers/title_page.webp",
+        pdf: "assets/covers/Doremon%26GeniusAIBox_AILiteracy_ComicBook.pdf",
+      }
+    ];
+
+    function renderComics() {
+      const grid = document.getElementById('comics-grid');
+      if (!grid) return;
+      grid.innerHTML = COMICS.map(c => `
+        <div class="comic-card" onclick="openComic(${c.id})">
+          <div class="comic-cover">
+            <img src="${c.thumbnail}" alt="${c.title}" loading="eager"/>
+            <div class="read-overlay"><span class="read-label">Read Comic</span></div>
+          </div>
+          <div class="comic-info">
+            <div class="comic-tag">${c.tag}</div>
+            <div class="comic-name">${c.title}</div>
+            <div class="comic-desc">${c.desc}</div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // Render immediately and on DOMContentLoaded
+    renderComics();
+    document.addEventListener('DOMContentLoaded', () => {
+      initPdfWorker();
+      renderComics();
+    });
+
+    // Smooth scroll for nav and hero buttons
+    ['hero-lib'].forEach(id => {
+      document.getElementById(id)?.addEventListener('click', e => {
+        e.preventDefault();
+        document.getElementById('library').scrollIntoView({ behavior: 'smooth' });
+      });
+    });
+
+    // ── PDF VIEWER STATE ──
+    let pdfDoc    = null;
+    let curPage   = 1;
+    let zoom      = 1.0;
+    let openId    = null;
+    let rendering = false;
+    let currentTask = null;
+
+    function openComic(id) {
+      const c = COMICS.find(x => x.id === id);
+      if (!c) return;
+      openId = id; curPage = 1; rendering = false;
+      document.getElementById('modal-title').textContent = c.title;
+      document.getElementById('modal-backdrop').classList.add('open');
+      document.body.style.overflow = 'hidden';
+      resetViewer();
+      loadPDF(c.pdf);
+    }
+
+    function resetViewer() {
+      document.getElementById('viewer').innerHTML = `
+        <div class="loading">
+          <div class="spinner"></div>
+          <span id="load-status">Opening…</span>
+          <div class="prog-wrap"><div class="prog-bar" id="prog-bar"></div></div>
+        </div>`;
+      document.getElementById('thumb-sidebar').innerHTML = '<div class="thumb-lbl">Pages</div>';
+      document.getElementById('total-pages').textContent = '—';
+      document.getElementById('page-input').value = 1;
+      document.getElementById('zoom-input').value = '100';
+    }
+
+    async function loadPDF(path) {
+      if (currentTask) {
+        try { currentTask.destroy(); } catch(e) {}
+        currentTask = null;
+      }
+
+      const url = decodeURIComponent(path);
+
+      const task = pdfjsLib.getDocument({
+        url,
+        rangeChunkSize: 65536,
+        disableRange: false,
+        disableStream: false,
+        disableAutoFetch: false,
+        cMapPacked: true,
+      });
+      currentTask = task;
+
+      task.onProgress = ({ loaded, total }) => {
+        if (total > 0) {
+          const pct = Math.round((loaded / total) * 100);
+          const bar = document.getElementById('prog-bar');
+          const lbl = document.getElementById('load-status');
+          if (bar) bar.style.width = pct + '%';
+          if (lbl) lbl.textContent = 'Loading… ' + pct + '%';
+        }
+      };
+
+      try {
+        const loadedDoc = await task.promise;
+        // If modal was closed while loading, discard
+        if (!document.getElementById('modal-backdrop').classList.contains('open')) {
+          try { loadedDoc.destroy(); } catch(e) {}
+          return;
+        }
+        pdfDoc = loadedDoc;
+        const n = pdfDoc.numPages;
+        document.getElementById('total-pages').textContent = n;
+        document.getElementById('page-input').max = n;
+        document.getElementById('page-input').value = 1;
+
+        const viewer = document.getElementById('viewer');
+        viewer.innerHTML = '';
+        const canvas = document.createElement('canvas');
+        canvas.id = 'page-canvas';
+        viewer.appendChild(canvas);
+
+        await autoFitZoom();
+        await renderCurrentPage();
+        buildThumbs(n);
+        updateNav();
+      } catch (err) {
+        document.getElementById('viewer').innerHTML = `
+          <div class="loading">
+            <div style="font-size:2rem">&#9888;</div>
+            <span style="color:#c0392b;text-align:center">
+              Could not load PDF.<br/>
+              <small style="color:#888">${err.message}</small>
+            </span>
+          </div>`;
+        console.error(err);
+      }
+    }
+
+    async function autoFitZoom() {
+      if (!pdfDoc) return;
+      const page   = await pdfDoc.getPage(curPage);
+      const vp1    = page.getViewport({ scale: 1 });
+      const viewer = document.getElementById('viewer');
+      const availW = viewer.clientWidth  - 48;
+      const availH = viewer.clientHeight - 48;
+      zoom = Math.min(availW / vp1.width, availH / vp1.height, 2.0);
+      updateZoomDisplay();
+    }
+
+    async function renderCurrentPage() {
+      if (!pdfDoc || rendering) return;
+      rendering = true;
+
+      const canvas = document.getElementById('page-canvas');
+      if (!canvas) { rendering = false; return; }
+
+      const page = await pdfDoc.getPage(curPage);
+      const dpr  = window.devicePixelRatio || 1;
+      const vp   = page.getViewport({ scale: zoom });
+
+      canvas.width  = Math.floor(vp.width  * dpr);
+      canvas.height = Math.floor(vp.height * dpr);
+      canvas.style.width  = Math.floor(vp.width)  + 'px';
+      canvas.style.height = Math.floor(vp.height) + 'px';
+
+      const ctx = canvas.getContext('2d');
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      await page.render({ canvasContext: ctx, viewport: vp }).promise;
+      document.getElementById('viewer').scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+      rendering = false;
+    }
+
+    async function buildThumbs(total) {
+      const sidebar = document.getElementById('thumb-sidebar');
+      for (let i = 1; i <= total; i++) {
+        if (!pdfDoc) break;
+        try {
+          const pg  = await pdfDoc.getPage(i);
+          const dpr = window.devicePixelRatio || 1;
+          const vp  = pg.getViewport({ scale: 0.18 });
+
+          const item = document.createElement('div');
+          item.className = 'thumb' + (i === 1 ? ' active' : '');
+          item.dataset.page = i;
+          item.onclick = () => goToPageDirect(i);
+
+          const cv = document.createElement('canvas');
+          cv.width  = Math.floor(vp.width  * dpr);
+          cv.height = Math.floor(vp.height * dpr);
+          cv.style.width  = '100%';
+          cv.style.height = 'auto';
+
+          const lbl = document.createElement('div');
+          lbl.className = 'thumb-n';
+          lbl.textContent = i;
+
+          item.appendChild(cv); item.appendChild(lbl);
+          sidebar.appendChild(item);
+
+          const ctx = cv.getContext('2d');
+          ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+          pg.render({ canvasContext: ctx, viewport: vp });
+        } catch(e) { }
+      }
+    }
+
+    async function goToPageDirect(num) {
+      if (!pdfDoc) return;
+      curPage = num;
+      document.getElementById('page-input').value = num;
+      document.querySelectorAll('.thumb').forEach(t =>
+        t.classList.toggle('active', +t.dataset.page === num)
+      );
+      document.querySelector('.thumb[data-page="' + num + '"]')
+        ?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      updateNav();
+      await renderCurrentPage();
+    }
+
+    function changePage(d) {
+      if (!pdfDoc || rendering) return;
+      const n = curPage + d;
+      if (n >= 1 && n <= pdfDoc.numPages) goToPageDirect(n);
+    }
+
+    function goToPage(v) {
+      const n = parseInt(v);
+      if (!isNaN(n) && pdfDoc && n >= 1 && n <= pdfDoc.numPages) goToPageDirect(n);
+    }
+
+    function updateNav() {
+      if (!pdfDoc) return;
+      document.getElementById('btn-prev').disabled = curPage <= 1;
+      document.getElementById('btn-next').disabled = curPage >= pdfDoc.numPages;
+    }
+
+    function updateZoomDisplay() {
+      const input = document.getElementById('zoom-input');
+      if (input) input.value = Math.round(zoom * 100);
+    }
+
+    async function changeZoom(d) {
+      if (!pdfDoc) return;
+      // Round to nearest multiple of 5%
+      let currentPct = Math.round(zoom * 100);
+      let deltaPct = Math.round(d * 100);
+      let targetPct = Math.round((currentPct + deltaPct) / 5) * 5;
+      targetPct = Math.min(Math.max(targetPct, 20), 400);
+      zoom = targetPct / 100;
+      updateZoomDisplay();
+      await renderCurrentPage();
+    }
+
+    async function setCustomZoom(val) {
+      if (!pdfDoc) return;
+      let pct = parseInt(val, 10);
+      if (isNaN(pct)) {
+        updateZoomDisplay();
+        return;
+      }
+      pct = Math.min(Math.max(pct, 20), 400);
+      zoom = pct / 100;
+      updateZoomDisplay();
+      await renderCurrentPage();
+    }
+
+    function closeModal() {
+      if (document.fullscreenElement) {
+        document.exitFullscreen?.().catch(() => {});
+      }
+      document.getElementById('modal-backdrop').classList.remove('open');
+      document.body.style.overflow = '';
+      if (currentTask) {
+        try { currentTask.destroy(); } catch(e) {}
+        currentTask = null;
+      }
+      if (pdfDoc) {
+        try { pdfDoc.destroy(); } catch(e) {}
+        pdfDoc = null;
+      }
+      curPage = 1;
+      rendering = false;
+      // Empty viewer so no loading spinner stays behind
+      document.getElementById('viewer').innerHTML = '';
+      document.getElementById('thumb-sidebar').innerHTML = '<div class="thumb-lbl">Pages</div>';
+    }
+
+    function closeOnBackdrop(e) {
+      if (e.target === document.getElementById('modal-backdrop')) closeModal();
+    }
+
+    function downloadComic() {
+      const c = COMICS.find(x => x.id === openId);
+      if (!c) return;
+      const a = document.createElement('a');
+      a.href = decodeURIComponent(c.pdf);
+      a.download = c.title + '.pdf';
+      a.click();
+    }
+
+    function toggleFullscreen() {
+      const m = document.querySelector('.modal');
+      if (!document.fullscreenElement) {
+        if (m.requestFullscreen) m.requestFullscreen();
+        else if (m.webkitRequestFullscreen) m.webkitRequestFullscreen();
+        else if (m.msRequestFullscreen) m.msRequestFullscreen();
+      } else {
+        if (document.exitFullscreen) document.exitFullscreen();
+        else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+        else if (document.msExitFullscreen) document.msExitFullscreen();
+      }
+    }
+
+    // Auto-fit screen when entering or exiting fullscreen / resizing
+    document.addEventListener('fullscreenchange', onResizeOrFullscreen);
+    document.addEventListener('webkitfullscreenchange', onResizeOrFullscreen);
+    window.addEventListener('resize', onResizeOrFullscreen);
+
+    let resizeTimer = null;
+    function onResizeOrFullscreen() {
+      if (!document.getElementById('modal-backdrop').classList.contains('open') || !pdfDoc) return;
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(async () => {
+        await autoFitZoom();
+        await renderCurrentPage();
+      }, 150);
+    }
+
+    document.addEventListener('keydown', e => {
+      if (!document.getElementById('modal-backdrop').classList.contains('open')) return;
+      if (e.key === 'Escape')                                closeModal();
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); changePage(1); }
+      if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')   { e.preventDefault(); changePage(-1); }
+      if (e.key === '+' || e.key === '=')                   changeZoom(0.05);
+      if (e.key === '-')                                    changeZoom(-0.05);
+    });
+  </script>
+</body>
+</html>
